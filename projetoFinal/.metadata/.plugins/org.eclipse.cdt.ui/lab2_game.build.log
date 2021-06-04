@@ -1,0 +1,11 @@
+15:02:48 **** Incremental Build of configuration Debug for project lab2_game ****
+make -j4 all 
+'Invoking: GNU ARM Cross Print Size'
+arm-none-eabi-size --format=berkeley "lab2_game.elf"
+   text	   data	    bss	    dec	    hex	filename
+  19828	    216	   6404	  26448	   6750	lab2_game.elf
+'Finished building: lab2_game.siz'
+' '
+
+15:02:53 Build Finished. 0 errors, 0 warnings. (took 5s.342ms)
+

@@ -1,0 +1,95 @@
+#include "logical_thread.h"
+#include "gui/endurer_resources.h"
+#include "gui/endurer_specifications.h"
+
+#include "main_thread.h"
+int direita;
+int esquerda;
+int geraInimigo;
+int score;
+
+/* Callback function */
+void movimentaGeral(timer_callback_args_t *p_args)
+{
+    /* TODO: add your own code here */
+    score ++;
+    geraInimigo++;
+    //geraPista++;
+    g_timer.p_api->reset(g_timer.p_ctrl);
+}
+
+static void movimentacao(GX_RESOURCE_ID id, GX_VALUE movimentoX, GX_VALUE movimentoY);
+void atualizaGui();
+void geradorInimigos();
+void atualizaScore(GX_RESOURCE_ID id);
+
+/* Controle do Jogo entry function */
+void logical_thread_entry(void)
+{
+    g_timer.p_api->open(g_timer.p_ctrl, g_timer.p_cfg);
+    g_timer.p_api->start(g_timer.p_ctrl);
+    tx_mutex_get(&guixStarted, TX_WAIT_FOREVER);
+    ULONG   received_message = 0;
+    score = 0;
+    geraInimigo = 0;
+    while (1)
+    {
+
+        tx_queue_receive(&g_input_queue, &received_message, TX_NO_WAIT);
+        if(received_message == 1){
+            direita = 1;
+            received_message = 0;
+        }
+        if(received_message == 2){
+            esquerda = 1;
+            received_message = 0;
+        }
+        if(received_message == 3){
+            //resetGame();
+            received_message = 0;
+        }
+        atualizaGui();
+        tx_thread_sleep (3);
+        gx_system_canvas_refresh();
+    }
+}
+
+
+
+static void movimentacao(GX_RESOURCE_ID id, GX_VALUE movimentoX, GX_VALUE movimentoY){
+    GX_ICON * p_icon = NULL;
+    ssp_err_t err = (ssp_err_t)gx_system_widget_find((USHORT)id, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+        if (TX_SUCCESS == err)
+        {
+            gx_widget_shift(p_icon, movimentoX, movimentoY, GX_TRUE);
+        }
+}
+
+
+void atualizaGui()
+{
+    movimentacao(ID_INIMIGO_A, (GX_VALUE) 0,(GX_VALUE) 1);
+    if(direita){
+        movimentacao(ID_CARRO, (GX_VALUE) -10,(GX_VALUE) 0);
+        direita = 0;
+    }
+    if(esquerda){
+        movimentacao(ID_CARRO, (GX_VALUE) 10,(GX_VALUE) 0);
+        esquerda = 0;
+    }
+    atualizaScore(ID_POINTS1);
+}
+void atualizaScore(GX_RESOURCE_ID id){
+    GX_NUMERIC_PROMPT * p_icon = NULL;
+    ssp_err_t err = (ssp_err_t)gx_system_widget_find((USHORT)id, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+        if (TX_SUCCESS == err)
+        {
+            gx_numeric_prompt_value_set(p_icon, score);
+        }
+}
+
+void geradorInimigos() //A cada 2s gera um novo inimigo
+{
+
+
+}

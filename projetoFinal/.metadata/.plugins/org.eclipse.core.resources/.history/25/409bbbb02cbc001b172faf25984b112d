@@ -1,0 +1,249 @@
+#include "logical_thread.h"
+#include "gui/endurer_resources.h"
+#include "gui/endurer_specifications.h"
+
+
+#include "main_thread.h"
+int direita;
+int esquerda;
+int geraInimigo;
+int score;
+int restantes;
+GX_VALUE level;
+GX_VALUE* inimigoA0;
+GX_VALUE* inimigoB0;
+GX_VALUE* inimigoC0;
+GX_VALUE* carro0;
+int inimigoA;
+int inimigoB;
+int inimigoC;
+
+/* Callback function */
+void movimentaGeral(timer_callback_args_t *p_args)
+{
+    /* TODO: add your own code here */
+    score +=level;
+    geraInimigo++;
+    //geraPista++;
+    g_timer.p_api->reset(g_timer.p_ctrl);
+}
+
+static void movimentacao(GX_RESOURCE_ID id, GX_VALUE movimentoX, GX_VALUE movimentoY);
+void gameOver();
+void atualizaGui();
+void geradorInimigos();
+void atualizaScore(GX_RESOURCE_ID id, int atualizar);
+int checaColisao(GX_RESOURCE_ID player, GX_RESOURCE_ID inimigo);
+int ultrapassagem(GX_RESOURCE_ID player, GX_RESOURCE_ID inimigo);
+void getRectangle(GX_RESOURCE_ID icon, GX_VALUE *rectangle);
+void setRectangle(GX_RESOURCE_ID icon, GX_VALUE *rectangle);
+void escondeIcon(GX_RESOURCE_ID id);
+void mostraIcon(GX_RESOURCE_ID id);
+
+/* Controle do Jogo entry function */
+void logical_thread_entry(void)
+{
+    //STARTUP DE PARTIDA
+    tx_mutex_get(&guixStarted, TX_WAIT_FOREVER);
+    ULONG   received_message = 0;
+    score = 0;
+    inimigoA = 1;
+    inimigoB = 0;
+    inimigoC = 0;
+    geraInimigo = 0;
+    level = 1;
+    restantes = 10;
+    getRectangle(ID_INIMIGO_A, inimigoA0);
+    getRectangle(ID_INIMIGO_B, inimigoB0);
+    getRectangle(ID_INIMIGO_C, inimigoC0);
+    getRectangle(ID_CARRO, carro0);
+    g_timer.p_api->open(g_timer.p_ctrl, g_timer.p_cfg);
+    g_timer.p_api->start(g_timer.p_ctrl);
+    while (1)
+    {
+
+        tx_queue_receive(&g_input_queue, &received_message, TX_NO_WAIT);
+        if(received_message == 1){
+            direita = 1;
+            received_message = 0;
+        }
+        if(received_message == 2){
+            esquerda = 1;
+            received_message = 0;
+        }
+        if(received_message == 3){
+            //resetGame(WINDOW1);
+            received_message = 0;
+        }
+        atualizaGui();
+        tx_thread_sleep (3);
+        gx_system_canvas_refresh();
+    }
+}
+
+
+
+static void movimentacao(GX_RESOURCE_ID id, GX_VALUE movimentoX, GX_VALUE movimentoY){
+    GX_ICON * p_icon = NULL;
+    ssp_err_t err = (ssp_err_t)gx_system_widget_find((USHORT)id, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+        if (TX_SUCCESS == err)
+        {
+            gx_widget_shift(p_icon, movimentoX, movimentoY, GX_TRUE);
+        }
+}
+
+
+void atualizaGui()
+{
+    int flag = 0;
+    if(inimigoA)
+        movimentacao(ID_INIMIGO_A, (GX_VALUE) 0,level);
+
+    if(direita){
+        movimentacao(ID_CARRO, (GX_VALUE) -10,(GX_VALUE) 0);
+        direita = 0;
+    }
+    if(esquerda){
+        movimentacao(ID_CARRO, (GX_VALUE) 10,(GX_VALUE) 0);
+        esquerda = 0;
+    }
+    atualizaScore(ID_POINTS1, score);
+
+    if(inimigoA)
+        flag = checaColisao(ID_CARRO, ID_INIMIGO_A);
+    if(flag)
+            gameOver();
+
+    if(inimigoA){
+        inimigoA -=ultrapassagem(ID_CARRO, ID_INIMIGO_A);
+    }
+
+    atualizaScore(ID_RACERS_LEFT, restantes);
+
+    if(!restantes){
+        restantes = 10;
+        level++;
+    }
+
+    if(geraInimigo==4)
+        geradorInimigos();
+}
+
+void atualizaScore(GX_RESOURCE_ID id, int atualizar){
+    GX_NUMERIC_PROMPT * p_icon = NULL;
+    ssp_err_t err = (ssp_err_t)gx_system_widget_find((USHORT)id, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+        if (TX_SUCCESS == err)
+        {
+            gx_numeric_prompt_value_set(p_icon, atualizar);
+        }
+}
+
+int checaColisao(GX_RESOURCE_ID player, GX_RESOURCE_ID inimigo){
+    GX_ICON * player_icon = NULL;
+    GX_ICON * inimigo_icon = NULL;
+    gx_system_widget_find((USHORT)player, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&player_icon);
+    gx_system_widget_find((USHORT)inimigo, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&inimigo_icon);
+
+    GX_VALUE topCarro, bottomCarro, leftCarro, rightCarro;
+    topCarro = player_icon->gx_widget_size.gx_rectangle_top;
+    leftCarro = player_icon->gx_widget_size.gx_rectangle_left;
+    rightCarro = player_icon->gx_widget_size.gx_rectangle_right;
+    bottomCarro = player_icon->gx_widget_size.gx_rectangle_bottom;
+
+
+    GX_VALUE topInimigo, bottomInimigo, leftInimigo, rightInimigo;
+    topInimigo = inimigo_icon->gx_widget_size.gx_rectangle_top;
+    leftInimigo = inimigo_icon->gx_widget_size.gx_rectangle_left;
+    rightInimigo = inimigo_icon->gx_widget_size.gx_rectangle_right;
+    bottomInimigo = inimigo_icon->gx_widget_size.gx_rectangle_bottom;
+
+    if(topCarro <= bottomInimigo && bottomCarro >= topInimigo && leftCarro <= rightInimigo && rightCarro >= leftInimigo){
+        return 1;
+    }
+    return 0;
+}
+
+void getRectangle(GX_RESOURCE_ID icon, GX_VALUE *rectangle){
+    GX_ICON * p_icon = NULL;
+    gx_system_widget_find((USHORT)icon, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+    rectangle[0] = p_icon->gx_widget_size.gx_rectangle_top;
+    rectangle[1] = p_icon->gx_widget_size.gx_rectangle_left;
+    rectangle[2] = p_icon->gx_widget_size.gx_rectangle_right;
+    rectangle[3] = p_icon->gx_widget_size.gx_rectangle_bottom;
+}
+
+void setRectangle(GX_RESOURCE_ID icon, GX_VALUE *rectangle){
+    GX_ICON * p_icon = NULL;
+    gx_system_widget_find((USHORT)icon, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+    p_icon->gx_widget_size.gx_rectangle_top = 83;
+    p_icon->gx_widget_size.gx_rectangle_left = 111;
+    p_icon->gx_widget_size.gx_rectangle_right = 99;
+    p_icon->gx_widget_size.gx_rectangle_bottom = 127;
+}
+
+void gameOver(){
+    //apagar objetos de partida
+    escondeIcon(ID_CARRO);
+    escondeIcon(ID_INIMIGO_A);
+    escondeIcon(ID_INIMIGO_B);
+    escondeIcon(ID_INIMIGO_C);
+    GX_ICON_BUTTON * p_but = NULL;
+    gx_system_widget_find(ID_ESQUERDA, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_but);
+    gx_widget_hide(p_but);
+    gx_system_widget_find(ID_DIREITA, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_but);
+    gx_widget_hide(p_but);
+
+    atualizaScore(ID_HIGHSCORE, score);
+    GX_PROMPT * p_prom = NULL;
+    ssp_err_t err = (ssp_err_t)gx_system_widget_find((USHORT)ID_GAME_OVER, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_prom);
+    if (TX_SUCCESS == err)
+    {
+        gx_prompt_text_id_set(p_prom, GX_STRING_ID_GAME_OVER);
+    }
+    GX_WINDOW * p_win = NULL;
+    gx_system_widget_find(ID_WINDOW1, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_win);
+    gx_window_wallpaper_set(p_win,GX_PIXELMAP_ID_NOITE,GX_TRUE);
+}
+
+int ultrapassagem(GX_RESOURCE_ID player, GX_RESOURCE_ID inimigo)
+{
+    GX_ICON * player_icon = NULL;
+    GX_ICON * inimigo_icon = NULL;
+    gx_system_widget_find((USHORT)player, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&player_icon);
+    gx_system_widget_find((USHORT)inimigo, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&inimigo_icon);
+    GX_VALUE carro, enemy;
+    carro = player_icon->gx_widget_size.gx_rectangle_bottom;
+    enemy = inimigo_icon->gx_widget_size.gx_rectangle_top;
+    if(enemy>carro){
+        gx_widget_hide(inimigo_icon);
+        restantes--;
+        inimigoA = 0;
+    }
+    return 0;
+}
+
+void geradorInimigos() //A cada 2s gera um novo inimigo
+{
+    if(!inimigoA){
+        mostraIcon(ID_INIMIGO_A);
+        inimigoA=1;
+    }
+
+}
+void escondeIcon(GX_RESOURCE_ID id){
+    GX_ICON * p_icon = NULL;
+        ssp_err_t err = (ssp_err_t)gx_system_widget_find((USHORT)id, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+            if (TX_SUCCESS == err)
+            {
+                gx_widget_hide(p_icon);
+            }
+}
+void mostraIcon(GX_RESOURCE_ID id){
+    GX_ICON * p_icon = NULL;
+        ssp_err_t err = (ssp_err_t)gx_system_widget_find((USHORT)id, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+            if (TX_SUCCESS == err)
+            {
+                setRectangle(id,inimigoB0);
+                gx_icon_draw(p_icon);
+            }
+}

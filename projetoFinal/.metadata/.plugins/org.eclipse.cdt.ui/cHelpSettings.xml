@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<cHelpSettings>
+<project name="enduro">
+<provider id="org.eclipse.cdt.ui.provider1"/>
+<provider id="org.eclipse.linuxtools.cdt.libhover.provider">
+<book enabled="false" title="Renesas.Synergy.1.2.0.pack"/>
+<book enabled="true" title="Renesas.Synergy.1.7.8.pack"/>
+<book enabled="false" title="Renesas.Synergy.2.0.0-alpha.1.pack"/>
+</provider>
+</project>
+<project name="lab2_game">
+<provider id="org.eclipse.cdt.ui.provider1"/>
+<provider id="org.eclipse.linuxtools.cdt.libhover.provider">
+<book enabled="false" title="Renesas.Synergy.1.2.0.pack"/>
+<book enabled="true" title="Renesas.Synergy.1.7.8.pack"/>
+<book enabled="false" title="Renesas.Synergy.2.0.0-alpha.1.pack"/>
+</provider>
+</project>
+<project name="lab7b">
+<provider id="org.eclipse.cdt.ui.provider1"/>
+<provider id="org.eclipse.linuxtools.cdt.libhover.provider">
+<book enabled="false" title="Renesas.Synergy.1.2.0.pack"/>
+<book enabled="true" title="Renesas.Synergy.1.7.8.pack"/>
+<book enabled="false" title="Renesas.Synergy.2.0.0-alpha.1.pack"/>
+</provider>
+</project>
+</cHelpSettings>

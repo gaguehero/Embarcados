@@ -1,0 +1,128 @@
+#include "logical_thread.h"
+#include "gui/endurer_resources.h"
+#include "gui/endurer_specifications.h"
+
+#include "main_thread.h"
+int direita;
+int esquerda;
+int geraInimigo;
+int score;
+GX_VALUE level;
+int restantes;
+
+/* Callback function */
+void movimentaGeral(timer_callback_args_t *p_args)
+{
+    /* TODO: add your own code here */
+    score +=level;
+    geraInimigo++;
+    //geraPista++;
+    g_timer.p_api->reset(g_timer.p_ctrl);
+}
+
+static void movimentacao(GX_RESOURCE_ID id, GX_VALUE movimentoX, GX_VALUE movimentoY);
+void atualizaGui();
+void geradorInimigos();
+void atualizaScore(GX_RESOURCE_ID id, int atualizar);
+int checaColisao(GX_RESOURCE_ID player, GX_RESOURCE_ID inimigo);
+
+/* Controle do Jogo entry function */
+void logical_thread_entry(void)
+{
+    g_timer.p_api->open(g_timer.p_ctrl, g_timer.p_cfg);
+    g_timer.p_api->start(g_timer.p_ctrl);
+    tx_mutex_get(&guixStarted, TX_WAIT_FOREVER);
+    ULONG   received_message = 0;
+    score = 0;
+    geraInimigo = 0;
+    level = 1;
+    while (1)
+    {
+
+        tx_queue_receive(&g_input_queue, &received_message, TX_NO_WAIT);
+        if(received_message == 1){
+            direita = 1;
+            received_message = 0;
+        }
+        if(received_message == 2){
+            esquerda = 1;
+            received_message = 0;
+        }
+        if(received_message == 3){
+            //resetGame();
+            received_message = 0;
+        }
+        atualizaGui();
+        tx_thread_sleep (3);
+        gx_system_canvas_refresh();
+    }
+}
+
+
+
+static void movimentacao(GX_RESOURCE_ID id, GX_VALUE movimentoX, GX_VALUE movimentoY){
+    GX_ICON * p_icon = NULL;
+    ssp_err_t err = (ssp_err_t)gx_system_widget_find((USHORT)id, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+        if (TX_SUCCESS == err)
+        {
+            gx_widget_shift(p_icon, movimentoX, movimentoY, GX_TRUE);
+        }
+}
+
+
+void atualizaGui()
+{
+    int flag = 0;
+    movimentacao(ID_INIMIGO_A, (GX_VALUE) 0,level);
+    if(direita){
+        movimentacao(ID_CARRO, (GX_VALUE) -10,(GX_VALUE) 0);
+        direita = 0;
+    }
+    if(esquerda){
+        movimentacao(ID_CARRO, (GX_VALUE) 10,(GX_VALUE) 0);
+        esquerda = 0;
+    }
+    atualizaScore(ID_POINTS1, score);
+    flag = checaColisao(ID_CARRO, ID_INIMIGO_A);
+    atualizaScore(ID_RACERS_LEFT, flag);
+}
+
+void atualizaScore(GX_RESOURCE_ID id, int atualizar){
+    GX_NUMERIC_PROMPT * p_icon = NULL;
+    ssp_err_t err = (ssp_err_t)gx_system_widget_find((USHORT)id, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&p_icon);
+        if (TX_SUCCESS == err)
+        {
+            gx_numeric_prompt_value_set(p_icon, atualizar);
+        }
+}
+
+int checaColisao(GX_RESOURCE_ID player, GX_RESOURCE_ID inimigo){
+    GX_ICON * player_icon = NULL;
+    GX_ICON * inimigo_icon = NULL;
+    gx_system_widget_find((USHORT)player, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&player_icon);
+    gx_system_widget_find((USHORT)inimigo, GX_SEARCH_DEPTH_INFINITE, (GX_WIDGET**)&inimigo_icon);
+
+    GX_VALUE topCarro, bottomCarro, leftCarro, rightCarro;
+    topCarro = player_icon->gx_widget_size.gx_rectangle_top;
+    leftCarro = player_icon->gx_widget_size.gx_rectangle_left;
+    rightCarro = player_icon->gx_widget_size.gx_rectangle_right;
+    bottomCarro = player_icon->gx_widget_size.gx_rectangle_bottom;
+
+
+    GX_VALUE topInimigo, bottomInimigo, leftInimigo, rightInimigo;
+    topInimigo = inimigo_icon->gx_widget_size.gx_rectangle_top;
+    leftInimigo = inimigo_icon->gx_widget_size.gx_rectangle_left;
+    rightInimigo = inimigo_icon->gx_widget_size.gx_rectangle_right;
+    bottomInimigo = inimigo_icon->gx_widget_size.gx_rectangle_bottom;
+
+    if(topCarro <= bottomInimigo && bottomCarro >= topInimigo && leftCarro <= rightInimigo && rightCarro >= leftInimigo){
+        return 1;
+    }
+    return 0;
+}
+
+void geradorInimigos() //A cada 2s gera um novo inimigo
+{
+
+
+}
